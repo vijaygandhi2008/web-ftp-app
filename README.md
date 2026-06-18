@@ -1,12 +1,14 @@
-# Xi-IMB Feature File Organizer
+# Xi and Xing Feature File Organizer
 
-A Python-based web application to upload and download Xi feature files to/from SBNAS with automatic folder organization.
+A Python-based web application to upload and download Xi feature files and Xing .toml files to/from SBNAS.
 
 ## Features
 
 - 📤 **Upload Multiple Files**: Upload single or multiple files from your local machine to an SMB/Samba server
-- 📁 **Auto Folder Organization**: Files are automatically organized into folders based on filename pattern
-- 🔍 **Folder Browser**: Browse files by folder using dropdown or search functionality
+- 📁 **Auto Folder Organization**: Xi files are automatically organized into folders based on filename pattern
+- 🔍 **Folder Browser**: Browse Xi files by folder using dropdown or search functionality
+- 🧩 **Separate Product Pages**: Open Xi and Xing from the home page and manage each workspace separately
+- 🧾 **Xing .toml Support**: Upload and download Xing files without automatic folder creation
 - 📥 **Bulk Download**: Select multiple files with checkboxes and download as a ZIP archive
 - 📂 **Directory Listing**: View all folders and files in the SMB directory with file details (size, modified date)
 - 🗑️ **Delete Files**: Remove files from the SMB server
@@ -33,8 +35,8 @@ pip install -r requirements.txt
 ```
 
 3. Configure SMB settings:
-   - Copy `config.example.json` to `config.json`
-   - Update the SMB credentials in `config.json`:
+  - Copy `config.example.json` to `config.json`
+  - Update the SMB credentials in `config.json` for Xi and, if needed, Xing:
 ```json
 {
   "smb": {
@@ -44,6 +46,13 @@ pip install -r requirements.txt
     "path": "/Inbox/QubeXP/Xi-FeatureFiles",
     "domain": "WORKGROUP",
     "username": "your-username",
+    "password": "your-password"
+  },
+  "xing": {
+    "share": "//192.168.8.4/Ocean",
+    "path": "/Inbox/QubeXP/Xing-LicenseFiles",
+    "domain": "WORKGROUP",
+    "user": "your-username",
     "password": "your-password"
   },
   "server": {
@@ -59,6 +68,7 @@ pip install -r requirements.txt
 - `server_ip`: SBNAS server IP address (e.g., `192.168.8.4`)
 - `share_name`: Root SBNAS share name (e.g., `Ocean`)
 - `path`: Subdirectory within the share (e.g., `/Inbox/QubeXP/Xi-FeatureFiles`)
+- `xing.path`: Subdirectory within the share for Xing (e.g., `/Inbox/QubeXP/Xing-LicenseFiles`)
 
 ## Usage
 
@@ -72,11 +82,16 @@ python app.py
 http://localhost:3000
 ```
 
-3. Use the web interface to:
+3. Use the home page to choose a product:
+  - **Xi**: Uses the existing folder-organized workflow
+  - **Xing**: Opens the .toml workflow without folder creation
+
+4. Use the web interface to:
    - **Upload files**: Select one or multiple files, click "Upload to SBNAS"
      - Files are automatically organized into folders based on the filename pattern: `filename.split('-')[-1].split('.')[0]`
      - Example: `report-data-sales.pdf` will be stored in folder `sales`
      - Example: `feature-file-4k_hfr-304546.xml` will be stored in folder `304546`
+  - **Xing uploads**: Select one or multiple `.toml` files and upload them without folder creation into `/Inbox/QubeXP/Xing-LicenseFiles`
    - **Browse folders**: Use the dropdown to select a folder or search for folders by name
    - **View files**: Click "Refresh" to load files from the selected folder
    - **Download single file**: Click the "Download" button next to any file
@@ -135,12 +150,23 @@ See [TESTING.md](TESTING.md) for detailed test documentation.
 
 The application exposes the following REST API endpoints:
 
-- `POST /api/upload` - Upload multiple files to SBNAS (organized into folders automatically)
-- `GET /api/files?folder=<name>` - List all files in SBNAS directory or specific folder
-- `GET /api/directories` - List all directories in SBNAS root
-- `GET /api/download/<filename>?folder=<name>` - Download a file from SBNAS
-- `POST /api/download-multiple` - Download multiple files as ZIP archive
-- `DELETE /api/delete/<filename>` - Delete a file from SBNAS
+- `POST /api/upload` - Xi upload endpoint kept for compatibility
+- `POST /api/xi/upload` - Upload Xi files organized into folders automatically
+- `POST /api/xing/upload` - Upload Xing `.toml` files without folder creation into `/Inbox/QubeXP/Xing-LicenseFiles`
+- `GET /api/files?folder=<name>` - Xi file list for a folder
+- `GET /api/xi/files?folder=<name>` - Xi file list for a folder
+- `GET /api/xing/files` - Xing file list for the product root
+- `GET /api/directories` - Xi directories in the configured root
+- `GET /api/xi/directories` - Xi directories in the configured root
+- `GET /api/download/<filename>?folder=<name>` - Xi download endpoint kept for compatibility
+- `GET /api/xi/download/<filename>?folder=<name>` - Xi download endpoint
+- `GET /api/xing/download/<filename>` - Xing download endpoint
+- `POST /api/download-multiple` - Xi ZIP download endpoint kept for compatibility
+- `POST /api/xi/download-multiple` - Xi ZIP download endpoint
+- `POST /api/xing/download-multiple` - Xing ZIP download endpoint
+- `DELETE /api/delete/<filename>` - Xi delete endpoint kept for compatibility
+- `DELETE /api/xi/delete/<filename>` - Xi delete endpoint
+- `DELETE /api/xing/delete/<filename>` - Xing delete endpoint
 
 See [API.md](API.md) for detailed documentation.
 

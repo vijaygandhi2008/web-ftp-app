@@ -6,6 +6,13 @@
     "user": "username",
     "password": "password"
   },
+  "xing": {
+    "share": "//192.168.8.4/Ocean",
+    "path": "/Inbox/QubeXP/Xing-LicenseFiles",
+    "domain": "WORKGROUP",
+    "user": "username",
+    "password": "password"
+  },
   "server": {
     "port": 3000
   }

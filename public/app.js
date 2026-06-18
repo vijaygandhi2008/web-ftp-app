@@ -1,13 +1,104 @@
+const product = (document.body.dataset.product || 'xi').toLowerCase();
+const apiBase = product === 'xing' ? '/api/xing' : '/api/xi';
+const supportsFolders = product === 'xi';
+
 let currentFolder = '';
 let allFolders = [];
 let selectedFiles = new Set();
 
-// Upload files to SBNAS
+function pageTitle() {
+    return product === 'xing' ? 'Xing License File Organizer' : 'Xi-IMB Feature File Organizer';
+}
+
+function pageDescription() {
+    return product === 'xing'
+        ? 'Upload and download Xing license files to/from SBNAS'
+        : 'Upload and download Xi feature files to/from SBNAS';
+}
+
+function uploadLabel() {
+    return product === 'xing' ? 'Upload Xing License Files' : 'Upload Xi Feature Files';
+}
+
+function filesHeading() {
+    return product === 'xing' ? '⬇️ Xing License Files Downloader' : '⬇️ Xi Feature Files Downloader';
+}
+
+function fileInputAccept() {
+    return product === 'xing' ? '.toml' : '*/*';
+}
+
+function folderDisplayValue() {
+    return currentFolder || 'Root';
+}
+
+function filesUrl() {
+    if (!supportsFolders || !currentFolder) {
+        return `${apiBase}/files`;
+    }
+    return `${apiBase}/files?folder=${encodeURIComponent(currentFolder)}`;
+}
+
+function downloadUrl(filename) {
+    if (!supportsFolders || !currentFolder) {
+        return `${apiBase}/download/${encodeURIComponent(filename)}`;
+    }
+    return `${apiBase}/download/${encodeURIComponent(filename)}?folder=${encodeURIComponent(currentFolder)}`;
+}
+
+function deleteUrl(filename) {
+    if (!supportsFolders || !currentFolder) {
+        return `${apiBase}/delete/${encodeURIComponent(filename)}`;
+    }
+    return `${apiBase}/delete/${encodeURIComponent(filename)}?folder=${encodeURIComponent(currentFolder)}`;
+}
+
+function archiveName() {
+    if (!supportsFolders || !currentFolder) {
+        return `${product}-files.zip`;
+    }
+    return `${currentFolder}.zip`;
+}
+
+function setHeaderContent() {
+    const titleElement = document.getElementById('pageTitle');
+    const descriptionElement = document.getElementById('pageDescription');
+    const uploadHeadingElement = document.getElementById('uploadHeading');
+    const filesHeadingElement = document.getElementById('filesHeading');
+    const uploadButton = document.getElementById('uploadButton');
+    const fileInput = document.getElementById('fileInput');
+
+    if (titleElement) titleElement.textContent = pageTitle();
+    if (descriptionElement) descriptionElement.textContent = pageDescription();
+    if (uploadHeadingElement) uploadHeadingElement.textContent = product === 'xing' ? '📤 Xing License Files Uploader' : '📤 Xi Feature Files Uploader';
+    if (filesHeadingElement) filesHeadingElement.textContent = filesHeading();
+    if (uploadButton) uploadButton.textContent = uploadLabel();
+    if (fileInput) fileInput.accept = fileInputAccept();
+}
+
+function setupLayout() {
+    const folderControls = document.getElementById('folderControls');
+    const currentFolderDisplay = document.getElementById('currentFolderDisplay');
+    const currentFolderName = document.getElementById('currentFolderName');
+    const selectAllLabel = document.querySelector('.select-all-label');
+
+    if (supportsFolders) {
+        if (folderControls) folderControls.classList.remove('hidden');
+        if (currentFolderDisplay) currentFolderDisplay.classList.remove('hidden');
+        if (selectAllLabel) selectAllLabel.classList.remove('hidden');
+        if (currentFolderName) currentFolderName.textContent = folderDisplayValue();
+    } else {
+        if (folderControls) folderControls.classList.add('hidden');
+        if (currentFolderDisplay) currentFolderDisplay.classList.add('hidden');
+        if (selectAllLabel) selectAllLabel.classList.add('hidden');
+    }
+}
+
 async function uploadFiles() {
     const fileInput = document.getElementById('fileInput');
     const statusDiv = document.getElementById('uploadStatus');
-    
-    if (!fileInput.files.length) {
+
+    if (!fileInput || !fileInput.files.length) {
         showStatus('Please select at least one file to upload', 'error');
         return;
     }
@@ -18,9 +109,9 @@ async function uploadFiles() {
     }
 
     try {
-        statusDiv.innerHTML = '<p>Uploading...</p>';
-        
-        const response = await fetch('/api/upload', {
+        if (statusDiv) statusDiv.innerHTML = '<p>Uploading...</p>';
+
+        const response = await fetch(`${apiBase}/upload`, {
             method: 'POST',
             body: formData
         });
@@ -28,13 +119,12 @@ async function uploadFiles() {
         const data = await response.json();
 
         if (response.ok) {
-            showStatus(`✓ ${data.files.length} file(s) uploaded successfully!`, 'success');
+            showStatus(`✓ ${(data.count ?? data.files?.length ?? 0)} file(s) uploaded successfully!`, 'success');
             fileInput.value = '';
-            // Refresh folder list and file list after successful upload
             setTimeout(() => {
                 loadFolders();
                 refreshFileList();
-            }, 500);
+            }, 300);
         } else {
             showStatus(`✗ Upload failed: ${data.error}`, 'error');
         }
@@ -43,10 +133,11 @@ async function uploadFiles() {
     }
 }
 
-// Load folders for dropdown
 async function loadFolders() {
+    if (!supportsFolders) return;
+
     try {
-        const response = await fetch('/api/directories');
+        const response = await fetch(`${apiBase}/directories`);
         const data = await response.json();
 
         if (response.ok) {
@@ -58,91 +149,91 @@ async function loadFolders() {
     }
 }
 
-// Update folder dropdown
 function updateFolderDropdown(folders) {
     const select = document.getElementById('folderSelect');
-    const currentValue = select.value;
-    
+    if (!select) return;
+
+    const previousValue = select.value;
     select.innerHTML = '<option value="">Select folder from dropdown</option>';
-    
+
     folders.forEach(folder => {
         const option = document.createElement('option');
         option.value = folder;
         option.textContent = folder;
         select.appendChild(option);
     });
-    
-    // Restore previous selection if it exists
-    if (currentValue && folders.includes(currentValue)) {
-        select.value = currentValue;
+
+    if (previousValue && folders.includes(previousValue)) {
+        select.value = previousValue;
     }
 }
 
-// Filter folders based on search
 function filterFolders() {
+    if (!supportsFolders) return;
+
     const searchInput = document.getElementById('folderSearch');
-    const searchTerm = searchInput.value.toLowerCase();
-    
-    if (searchTerm === '') {
+    if (!searchInput) return;
+
+    const term = searchInput.value.toLowerCase();
+    if (!term) {
         updateFolderDropdown(allFolders);
-    } else {
-        const filtered = allFolders.filter(folder => 
-            folder.toLowerCase().includes(searchTerm)
-        );
-        updateFolderDropdown(filtered);
-        
-        // If exactly one folder matches, auto-select it
-        if (filtered.length === 1) {
-            const select = document.getElementById('folderSelect');
+        return;
+    }
+
+    const filtered = allFolders.filter(folder => folder.toLowerCase().includes(term));
+    updateFolderDropdown(filtered);
+
+    if (filtered.length === 1) {
+        const select = document.getElementById('folderSelect');
+        if (select) {
             select.value = filtered[0];
             onFolderChange();
         }
     }
 }
 
-// Handle folder change
 function onFolderChange() {
+    if (!supportsFolders) return;
+
     const select = document.getElementById('folderSelect');
+    if (!select) return;
+
     currentFolder = select.value;
-    const displayText = currentFolder === '' ? 'Select folder from dropdown' : currentFolder;
-    document.getElementById('currentFolderName').textContent = displayText;
+    const currentFolderName = document.getElementById('currentFolderName');
+    if (currentFolderName) {
+        currentFolderName.textContent = folderDisplayValue();
+    }
+
     selectedFiles.clear();
     updateSelectedCount();
     refreshFileList();
 }
 
-// Refresh file list
 async function refreshFileList() {
     const filesListDiv = document.getElementById('filesList');
-    
-    // Don't load files if no folder is selected
-    if (currentFolder === '') {
+    if (!filesListDiv) return;
+
+    if (supportsFolders && !currentFolder) {
         filesListDiv.innerHTML = '<p class="empty">Please select a folder from the dropdown to view files</p>';
         return;
     }
-    
+
     try {
         filesListDiv.innerHTML = '<p class="loading">Loading files...</p>';
-        
-        const url = `/api/files?folder=${encodeURIComponent(currentFolder)}`;
-        
-        const response = await fetch(url);
+
+        const response = await fetch(filesUrl());
         const data = await response.json();
 
         if (response.ok && data.files) {
-            // Backend already filters for files only, no need to filter again
-            const files = data.files;
-            
-            if (files.length === 0) {
-                filesListDiv.innerHTML = '<p class="empty">No files found in this folder</p>';
+            if (data.files.length === 0) {
+                filesListDiv.innerHTML = product === 'xing'
+                    ? '<p class="empty">No Xing files found</p>'
+                    : '<p class="empty">No files found in this folder</p>';
                 return;
             }
 
             filesListDiv.innerHTML = '';
-            files.forEach(file => {
-                const fileItem = createFileItem(file);
-                filesListDiv.appendChild(fileItem);
-            });
+            data.files.forEach(file => filesListDiv.appendChild(createFileItem(file)));
         } else {
             filesListDiv.innerHTML = `<p class="error">Failed to load files: ${data.error || 'Unknown error'}</p>`;
         }
@@ -151,16 +242,15 @@ async function refreshFileList() {
     }
 }
 
-// Create file item element with checkbox
 function createFileItem(file) {
-    const div = document.createElement('div');
-    div.className = 'file-item';
+    const item = document.createElement('div');
+    item.className = 'file-item';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'file-checkbox';
-    checkbox.onchange = (e) => {
-        if (e.target.checked) {
+    checkbox.onchange = event => {
+        if (event.target.checked) {
             selectedFiles.add(file.name);
         } else {
             selectedFiles.delete(file.name);
@@ -168,44 +258,45 @@ function createFileItem(file) {
         updateSelectedCount();
     };
 
-    const fileInfo = document.createElement('div');
-    fileInfo.className = 'file-info';
+    const info = document.createElement('div');
+    info.className = 'file-info';
 
-    const fileName = document.createElement('div');
-    fileName.className = 'file-name';
-    fileName.textContent = file.name;
+    const name = document.createElement('div');
+    name.className = 'file-name';
+    name.textContent = file.name;
 
-    const fileMeta = document.createElement('div');
-    fileMeta.className = 'file-meta';
-    fileMeta.textContent = `Size: ${formatFileSize(file.size)} | Modified: ${formatDate(file.modifiedAt)}`;
+    const meta = document.createElement('div');
+    meta.className = 'file-meta';
+    meta.textContent = `Size: ${formatFileSize(file.size)} | Modified: ${formatDate(file.modified)}`;
 
-    fileInfo.appendChild(fileName);
-    fileInfo.appendChild(fileMeta);
+    info.appendChild(name);
+    info.appendChild(meta);
 
-    const fileActions = document.createElement('div');
-    fileActions.className = 'file-actions';
+    const actions = document.createElement('div');
+    actions.className = 'file-actions';
 
-    const downloadBtn = document.createElement('button');
-    downloadBtn.className = 'btn btn-download';
-    downloadBtn.textContent = '⬇ Download';
-    downloadBtn.onclick = () => downloadFile(file.name);
+    const downloadButton = document.createElement('button');
+    downloadButton.className = 'btn btn-download';
+    downloadButton.textContent = '⬇ Download';
+    downloadButton.onclick = () => downloadFile(file.name);
 
-    fileActions.appendChild(downloadBtn);
+    actions.appendChild(downloadButton);
 
-    div.appendChild(checkbox);
-    div.appendChild(fileInfo);
-    div.appendChild(fileActions);
+    item.appendChild(checkbox);
+    item.appendChild(info);
+    item.appendChild(actions);
 
-    return div;
+    return item;
 }
 
-// Update selected count
 function updateSelectedCount() {
     const count = selectedFiles.size;
-    document.getElementById('selectedCount').textContent = count;
-    document.getElementById('downloadSelectedBtn').disabled = count === 0;
-    
-    // Update select all checkbox state
+    const selectedCount = document.getElementById('selectedCount');
+    const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+
+    if (selectedCount) selectedCount.textContent = count;
+    if (downloadSelectedBtn) downloadSelectedBtn.disabled = count === 0;
+
     const checkboxes = document.querySelectorAll('.file-checkbox');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     if (selectAllCheckbox && checkboxes.length > 0) {
@@ -214,11 +305,11 @@ function updateSelectedCount() {
     }
 }
 
-// Toggle select all
 function toggleSelectAll() {
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (!selectAllCheckbox) return;
+
     const checkboxes = document.querySelectorAll('.file-checkbox');
-    
     checkboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
         const fileName = checkbox.closest('.file-item').querySelector('.file-name').textContent;
@@ -228,11 +319,10 @@ function toggleSelectAll() {
             selectedFiles.delete(fileName);
         }
     });
-    
+
     updateSelectedCount();
 }
 
-// Download selected files
 async function downloadSelected() {
     if (selectedFiles.size === 0) {
         showDownloadStatus('Please select at least one file', 'error');
@@ -240,37 +330,32 @@ async function downloadSelected() {
     }
 
     try {
-        const response = await fetch('/api/download-multiple', {
+        const response = await fetch(`${apiBase}/download-multiple`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 files: Array.from(selectedFiles),
-                folder: currentFolder === '/' ? '' : currentFolder
+                folder: supportsFolders ? currentFolder : ''
             })
         });
 
         if (response.ok) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            // Use current folder name for zip file
-            const folderName = currentFolder && currentFolder !== '/' ? currentFolder : 'files';
-            a.download = `${folderName}.zip`;
-            document.body.appendChild(a);
-            a.click();
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = archiveName();
+            document.body.appendChild(anchor);
+            anchor.click();
             window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
+            document.body.removeChild(anchor);
+
             showDownloadStatus(`✓ ${selectedFiles.size} file(s) downloaded successfully!`, 'success');
             selectedFiles.clear();
             updateSelectedCount();
-            
-            // Uncheck all checkboxes
-            document.querySelectorAll('.file-checkbox').forEach(cb => cb.checked = false);
-            document.getElementById('selectAllCheckbox').checked = false;
+            document.querySelectorAll('.file-checkbox').forEach(checkbox => (checkbox.checked = false));
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
         } else {
             const data = await response.json();
             showDownloadStatus(`✗ Download failed: ${data.error}`, 'error');
@@ -280,61 +365,77 @@ async function downloadSelected() {
     }
 }
 
-// Download file from SBNAS
 async function downloadFile(filename) {
     try {
-        const url = currentFolder === '/' 
-            ? `/api/download/${encodeURIComponent(filename)}`
-            : `/api/download/${encodeURIComponent(filename)}?folder=${encodeURIComponent(currentFolder)}`;
-        window.location.href = url;
+        window.location.href = downloadUrl(filename);
         showDownloadStatus(`✓ File "${filename}" download started`, 'success');
     } catch (error) {
         showDownloadStatus(`✗ Download failed: ${error.message}`, 'error');
     }
 }
 
-// Show status message for upload
+async function deleteFile(filename) {
+    try {
+        const response = await fetch(deleteUrl(filename), { method: 'DELETE' });
+        const data = await response.json();
+
+        if (response.ok) {
+            showDownloadStatus(`✓ ${data.message}`, 'success');
+            refreshFileList();
+        } else {
+            showDownloadStatus(`✗ Delete failed: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showDownloadStatus(`✗ Delete failed: ${error.message}`, 'error');
+    }
+}
+
 function showStatus(message, type) {
     const statusDiv = document.getElementById('uploadStatus');
+    if (!statusDiv) return;
+
     statusDiv.textContent = message;
     statusDiv.className = `status-message ${type}`;
-    
+
     setTimeout(() => {
         statusDiv.textContent = '';
         statusDiv.className = 'status-message';
     }, 5000);
 }
 
-// Show status message for download
 function showDownloadStatus(message, type) {
     const statusDiv = document.getElementById('downloadStatus');
+    if (!statusDiv) return;
+
     statusDiv.textContent = message;
     statusDiv.className = `status-message ${type}`;
-    
+
     setTimeout(() => {
         statusDiv.textContent = '';
         statusDiv.className = 'status-message';
     }, 5000);
 }
 
-// Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
-    const k = 1024;
+    const base = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    const index = Math.floor(Math.log(bytes) / Math.log(base));
+    return `${Math.round((bytes / Math.pow(base, index)) * 100) / 100} ${sizes[index]}`;
 }
 
-// Format date
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString();
+function formatDate(value) {
+    if (!value) return 'N/A';
+    return new Date(value).toLocaleString();
 }
 
-// Load files on page load
 window.addEventListener('DOMContentLoaded', () => {
-    loadFolders();
+    setHeaderContent();
+    setupLayout();
+
+    if (supportsFolders) {
+        loadFolders();
+    }
+
     refreshFileList();
 });

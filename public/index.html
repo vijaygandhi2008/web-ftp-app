@@ -3,73 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web SMB/Samba Application</title>
+    <title>Feature File Organizer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1><img src="https://github.com/user-attachments/assets/605b2823-d640-49b6-959e-339f927da415" alt="Xi-IMB Icon" class="header-icon"> Xi-IMB Feature File Organizer</h1>
-            <p>Upload and download Xi feature files to/from SBNAS</p>
+    <div class="container landing-page">
+        <header class="landing-header">
+            <h2 class="landing-title">Xi/Xing Feature/License File Organizer</h2>
+            <p>Xi remains folder-organized by filename. Xing is a separate license file workspace without folder creation.</p>
         </header>
 
-        <div class="main-content">
-            <!-- Upload Section -->
-            <section class="upload-section">
-                <h2>📤 Upload Files</h2>
-                <div class="upload-form">
-                    <input type="file" id="fileInput" accept="*/*" multiple>
-                    <button onclick="uploadFiles()" class="btn btn-primary">Upload to SBNAS</button>
-                </div>
-                <div id="uploadStatus" class="status-message"></div>
-            </section>
+        <div class="product-grid">
+            <a class="product-card xi-card" href="/xi">
+                <span class="product-badge">Xi</span>
+                <h2>Xi-IMB Feature Files</h2>
+                <p>Upload Xi feature files, auto-build folders from the filename, and download from the organized browser.</p>
+                <span class="product-link">Xi workspace</span>
+            </a>
 
-            <!-- Files List Section -->
-            <section class="files-section">
-                <h2>⬇️ Xi Feature Files Downloader</h2>
-                
-                <!-- Folder selection -->
-                <div class="folder-controls">
-                    <div class="folder-dropdown">
-                        <label for="folderSelect">Select Folder:</label>
-                        <select id="folderSelect" onchange="onFolderChange()">
-                            <option value="">Select folder from dropdown</option>
-                        </select>
-                    </div>
-                    
-                    <div class="folder-search">
-                        <label for="folderSearch">Search Folder:</label>
-                        <div class="search-with-refresh">
-                            <input type="text" id="folderSearch" placeholder="Type folder name..." oninput="filterFolders()">
-                            <button onclick="refreshFileList()" class="btn btn-secondary btn-refresh">🔄 Refresh</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Current folder display -->
-                <div id="currentFolderDisplay" class="current-folder">
-                    <strong>Current Folder:</strong> <span id="currentFolderName">/</span>
-                </div>
-
-                <!-- Download selected button -->
-                <div class="bulk-actions">
-                    <label class="select-all-label">
-                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
-                        <span>Select All</span>
-                    </label>
-                    <button onclick="downloadSelected()" class="btn btn-download" id="downloadSelectedBtn" disabled>
-                        ⬇ Download Selected (<span id="selectedCount">0</span>)
-                    </button>
-                </div>
-                <div id="downloadStatus" class="status-message"></div>
-
-                <div id="filesList" class="files-list">
-                    <p class="loading">Click refresh to load files...</p>
-                </div>
-            </section>
+            <a class="product-card xing-card" href="/xing">
+                <span class="product-badge">Xing</span>
+                <h2>Xing License Files</h2>
+                <p>Upload and download Xing license files as .toml without automatic folder creation.</p>
+                <span class="product-link">Xing workspace</span>
+            </a>
         </div>
     </div>
-
-    <script src="app.js"></script>
 </body>
 </html>
